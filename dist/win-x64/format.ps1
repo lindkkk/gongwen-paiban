@@ -96,7 +96,7 @@ function Get-AllDefaultSpecs {
 #   返回 hashtable 或 $null（取消）
 # ==========================================================
 function Show-StyleEditor {
-    param([hashtable]$initSpecs)
+    param([hashtable]$initSpecs, $Owner = $null)
 
     $FontList = @('方正小标宋简体','宋体','仿宋','仿宋_GB2312','黑体','楷体','楷体_GB2312',
                   '微软雅黑','华文仿宋','华文中宋','华文楷体','华文宋体','思源宋体','思源黑体',
@@ -110,9 +110,12 @@ function Show-StyleEditor {
     $form = New-Object System.Windows.Forms.Form
     $form.Text = "自定义各级样式"
     $form.Size = New-Object System.Drawing.Size(600, 470)
-    $form.StartPosition = "CenterParent"
+    # 有 Owner 就相对父居中，否则居屏幕；模态子窗口不独立占任务栏
+    if ($Owner) { $form.StartPosition = "CenterParent" } else { $form.StartPosition = "CenterScreen" }
     $form.FormBorderStyle = "FixedDialog"
     $form.MaximizeBox = $false; $form.MinimizeBox = $false
+    $form.ShowInTaskbar = $false
+    $form.ShowIcon = $false
 
     $tabs = New-Object System.Windows.Forms.TabControl
     $tabs.Location = New-Object System.Drawing.Point(10, 10)
@@ -329,7 +332,8 @@ function Show-StyleEditor {
         }
     }.GetNewClosure())
 
-    $result = $form.ShowDialog()
+    # 带 Owner 打开模态，避免与主窗口 Z-order 争抢 / 被发到任务栏
+    if ($Owner) { $result = $form.ShowDialog($Owner) } else { $result = $form.ShowDialog() }
     if ($result -ne 'OK') { return $null }
 
     # 读回
@@ -397,7 +401,10 @@ try {
     $form.StartPosition = "CenterScreen"
     $form.FormBorderStyle = "FixedDialog"
     $form.MaximizeBox = $false; $form.MinimizeBox = $false
-    $form.TopMost = $true
+    # 关键：不能 TopMost。TopMost 会和模态子窗口（样式编辑器）争 Z-order，
+    # 导致子窗口一闪而过被丢进任务栏。下面用 BringToFront + Activate 做兜底。
+    $form.TopMost = $false
+    $form.Add_Shown({ $form.Activate() }.GetNewClosure())
 
     # 输入文件显示
     $lblFile = New-Object System.Windows.Forms.Label
@@ -556,9 +563,11 @@ try {
         }
     }.GetNewClosure())
 
+    $mainForm_ref = $form
     $btnEditor.Add_Click({
         $init = if ($script:customSpecs) { $script:customSpecs } else { Get-AllDefaultSpecs }
-        $r = Show-StyleEditor -initSpecs $init
+        # 关键：把主窗口作为 Owner 传进去，模态对话框才能正确与父建立 Z-order
+        $r = Show-StyleEditor -initSpecs $init -Owner $mainForm_ref
         if ($null -ne $r) {
             $script:customSpecs = $r
             $lblEditorStatus_ref.Text = "√ 已保存自定义样式"
