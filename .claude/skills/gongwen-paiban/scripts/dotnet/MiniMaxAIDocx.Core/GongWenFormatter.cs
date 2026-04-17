@@ -453,9 +453,26 @@ public class GongWenFormatter
             spacingAfter:  spec.SpacingAfterPt  > 0 ? spec.SpacingAfterTwips  : null,
             line: line, lineRule: ParseLineRule(lineRule),
             firstLineChars: spec.FirstLineIndentChars > 0 ? spec.FirstLineCharsValue : 0,
-            firstLine: spec.FirstLineIndentChars > 0 ? null : "0");
+            firstLine: spec.FirstLineIndentChars > 0 ? null : "0",
+            outlineLevel: OutlineLevelFor(styleId));
         RebuildRPr(cp.Element, spec.Font, spec.SzHalfPoints, bold: spec.Bold, italic: spec.Italic);
         InlineNumberPrefix(cp);
+    }
+
+    /// <summary>
+    /// 把 styleId 映射到 Word 的 outlineLvl 值：H1=0, H2=1, H3=2。
+    /// 决定了 Word / WPS 导航窗格 / 标签栏中段落的层级归属——
+    /// 没写 outlineLvl 的段落即便套了"二级标题"样式，Word 仍当正文，误显示到顶层。
+    /// </summary>
+    private static int? OutlineLevelFor(string styleId)
+    {
+        return styleId switch
+        {
+            StyleIdHeading1 => 0,
+            StyleIdHeading2 => 1,
+            StyleIdHeading3 => 2,
+            _ => (int?)null   // Title / Body / Footnote 不在大纲里
+        };
     }
 
     private void ApplyTitleStyle(ClassifiedPara cp)    => ApplySpecToParagraph(cp, StyleIdTitle,    _options.Title);
@@ -722,7 +739,8 @@ public class GongWenFormatter
         JustificationValues? justify,
         string? spacingBefore, string? spacingAfter,
         string? line, LineSpacingRuleValues? lineRule,
-        int? firstLineChars, string? firstLine)
+        int? firstLineChars, string? firstLine,
+        int? outlineLevel = null)
     {
         // 保留 SectionProperties（给 SetupSections 用），其它一律重建
         var preservedSectPrs = para.ParagraphProperties?.Elements<SectionProperties>().ToList() ?? new();
@@ -752,6 +770,11 @@ public class GongWenFormatter
             if (firstLine != null) ind.FirstLine = firstLine;
             pPr.AppendChild(ind);
         }
+
+        // outlineLvl：Word / WPS 导航窗格 / 标签栏依此判标题级别
+        // H1=0 / H2=1 / H3=2；其它（Title / Body / Footnote）不设，等于 body text (9)
+        if (outlineLevel.HasValue)
+            pPr.AppendChild(new OutlineLevel { Val = outlineLevel.Value });
 
         foreach (var sect in preservedSectPrs)
             pPr.AppendChild(sect.CloneNode(true));
@@ -902,6 +925,12 @@ public class GongWenFormatter
             pPr.AppendChild(new Indentation { FirstLineChars = spec.FirstLineCharsValue });
         else
             pPr.AppendChild(new Indentation { FirstLineChars = 0, FirstLine = "0" });
+
+        // 把大纲级别也写进样式定义：即便段落不挂直接属性，只要引用了该样式，
+        // Word / WPS 的导航窗格也能正确显示层级
+        var outline = OutlineLevelFor(styleId);
+        if (outline.HasValue)
+            pPr.AppendChild(new OutlineLevel { Val = outline.Value });
 
         var rPr = new StyleRunProperties(
             new RunFonts { Ascii = spec.Font, HighAnsi = spec.Font, EastAsia = spec.Font, ComplexScript = spec.Font, Hint = FontTypeHintValues.EastAsia },
