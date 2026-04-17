@@ -3,8 +3,9 @@
 set -e
 export PATH="$HOME/.dotnet:$PATH"
 
-TEST_DIR="/home/asus11700f/下载/doc-skill/test"
-DOTNET_DIR="/home/asus11700f/下载/doc-skill/.claude/skills/gongwen-paiban/scripts/dotnet"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TEST_DIR="$SCRIPT_DIR"
+DOTNET_DIR="$(cd "$SCRIPT_DIR/../src" && pwd)"
 
 cd "$DOTNET_DIR"
 dotnet build MiniMaxAIDocx.Cli/MiniMaxAIDocx.Cli.csproj --configuration Release 2>&1 | tail -3

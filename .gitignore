@@ -1,17 +1,14 @@
-# ====== .NET 构建产物 ======
+# ====== .NET build output ======
 **/bin/
 **/obj/
 **/*.pdb
 **/*.user
 
-# 已发布的自包含 exe / Linux 可执行（这些是 release 产物，~36MB 每份；
-# 应通过 GitHub Releases 页分发，不应进 git 历史。启动器脚本除外）
-dist/win-x64/gongwen-paiban.exe
-dist/win-x64/MiniMaxAIDocx.Cli.exe
-dist/linux-x64/gongwen-paiban
-dist/linux-x64/MiniMaxAIDocx.Cli
+# 已发布的自包含 exe / Linux 可执行（这些是 release 产物，通过 GitHub Releases
+# 页分发，不进 git 历史。launcher 脚本单独在 launcher/ 下管理）
+dist/
 
-# ====== Python 缓存 ======
+# ====== Python cache ======
 **/__pycache__/
 **/*.pyc
 **/*.pyo
@@ -19,15 +16,14 @@ dist/linux-x64/MiniMaxAIDocx.Cli
 # ====== 运行时日志 ======
 **/paiban-log.txt
 
-# ====== 测试生成的文档（都可由 gen_*.py 重新生成） ======
+# ====== 测试生成的文档（由 gen_*.py 重新生成） ======
 test/raw_*.docx
 test/formatted_*.docx
 
-# ====== 用户的示例文档 / 草稿 / 测试文件（不属于代码） ======
+# ====== 用户示例文档 / 草稿（不属于代码） ======
 上海*.doc
 prompt_test.txt
-dist/win-x64/*.docx
-dist/linux-x64/*.docx
+*_samples.docx
 
 # ====== OS / 编辑器 ======
 .DS_Store
@@ -36,10 +32,8 @@ Thumbs.db
 .vscode/
 .idea/
 
-# ====== NuGet 包缓存（理论上 dotnet restore 会拉，不入库） ======
+# ====== NuGet / 临时 ======
 *.nupkg
 packages/
-
-# ====== 构建脚本产生的临时文件 ======
 /tmp_*
 /tmp/

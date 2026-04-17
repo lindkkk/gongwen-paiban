@@ -34,26 +34,32 @@
 ## 源码目录
 
 ```
-.claude/skills/gongwen-paiban/
-├── SKILL.md / README.md / LICENSE
-├── references/gongwen_format_rules.md       # 规范文字版，和代码常量严格对齐
-└── scripts/dotnet/
-    ├── MiniMaxAIDocx.slnx
-    ├── MiniMaxAIDocx.Core/
-    │   ├── GongWenFormatter.cs              # ★ 主入口，含分类器 + 样式应用 + section 设置
-    │   ├── NumberingResolver.cs             # 自动编号 (numPr) 前缀字面化
-    │   ├── MarkerPatternInferrer.cs         # 用户标题样例 → regex
-    │   └── FormatOptions.cs                 # CLI 选项 POCO
-    └── MiniMaxAIDocx.Cli/
-        └── Program.cs                       # 命令行解析
-dist/win-x64/
-├── gongwen-paiban.exe                       # 构建产物
-├── format.bat                               # 启动器
-└── format.ps1
+src/                                         # C# 源码
+├── MiniMaxAIDocx.slnx
+├── MiniMaxAIDocx.Core/
+│   ├── GongWenFormatter.cs                  # ★ 主入口，分类器 / 样式应用 / section 设置
+│   ├── NumberingResolver.cs                 # numPr 自动编号前缀字面化
+│   ├── MarkerPatternInferrer.cs             # 用户标题样例 → regex
+│   ├── FormatOptions.cs / StyleSpec.cs      # CLI 选项 + 单角色规格
+│   └── MiniMaxAIDocx.Core.csproj
+└── MiniMaxAIDocx.Cli/
+    ├── Program.cs                           # 命令行解析
+    └── MiniMaxAIDocx.Cli.csproj
+launcher/
+├── format.bat                               # Windows 拖拽启动器（ASCII + CRLF）
+└── format.ps1                               # WinForms 对话框（UTF-8 BOM + CRLF）
+docs/
+├── ARCHITECTURE.md                          # 本文档
+├── DEVELOPMENT.md                           # 开发 / 构建 / 测试
+└── format-spec.md                           # 规范文字版，和代码常量严格对齐
 test/
 ├── gen_*.py                                 # 各种场景的测试文档生成器
 ├── verify.py                                # 严格校验输出文档
 └── run_all_tests.sh
+dist/                                        # 构建产物（.gitignore）
+build.sh / build.ps1                         # 一键构建脚本
+.github/workflows/build.yml                  # CI：push/tag 自动构建 + 发 release
+.claude/skills/gongwen-paiban/               # Claude Code skill 包装壳（薄）
 ```
 
 ## 核心数据流：一次 format 调用

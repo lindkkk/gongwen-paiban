@@ -19,37 +19,27 @@ dotnet --version   # 确认 8.0.xxx
 
 ## 构建
 
-### 普通本地构建
+### 一键构建（推荐）
 
 ```bash
-cd .claude/skills/gongwen-paiban/scripts/dotnet
-dotnet build MiniMaxAIDocx.Cli/MiniMaxAIDocx.Cli.csproj -c Release
-```
+# Linux / macOS：
+./build.sh win-x64            # 输出 dist/win-x64/gongwen-paiban.exe + 两个 launcher
+./build.sh linux-x64
+./build.sh osx-arm64
 
-输出在 `MiniMaxAIDocx.Cli/bin/Release/net8.0/`，运行需要装 .NET 运行时。
-
-### 发布单文件自包含 exe（用户用的形态）
-
-```bash
-# Windows x64
-dotnet publish MiniMaxAIDocx.Cli/MiniMaxAIDocx.Cli.csproj \
-    -c Release -r win-x64 --self-contained true \
-    -p:PublishSingleFile=true \
-    -p:IncludeNativeLibrariesForSelfExtract=true \
-    -p:EnableCompressionInSingleFile=true \
-    -o ../../../../dist/win-x64
-
-# Linux x64（同上把 win-x64 换成 linux-x64）
-# macOS x64：osx-x64  /  Apple Silicon：osx-arm64
+# Windows PowerShell：
+.\build.ps1 win-x64
 ```
 
 产物约 36 MB，零依赖双击即用（Windows 7 SP1 及以上）。
 
-构建完记得**重命名**：
+### 开发时的快速构建
 
 ```bash
-mv dist/win-x64/MiniMaxAIDocx.Cli.exe dist/win-x64/gongwen-paiban.exe
+dotnet build src/MiniMaxAIDocx.Cli/MiniMaxAIDocx.Cli.csproj -c Release
 ```
+
+输出在 `src/MiniMaxAIDocx.Cli/bin/Release/net8.0/`，运行需要装 .NET 运行时。
 
 ## 跑测试
 

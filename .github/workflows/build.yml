@@ -1,0 +1,83 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            ext: .exe
+          - os: ubuntu-latest
+            rid: linux-x64
+            ext: ''
+          - os: macos-latest
+            rid: osx-arm64
+            ext: ''
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish
+        shell: bash
+        run: |
+          dotnet publish src/MiniMaxAIDocx.Cli/MiniMaxAIDocx.Cli.csproj \
+              -c Release -r ${{ matrix.rid }} --self-contained true \
+              -p:PublishSingleFile=true \
+              -p:IncludeNativeLibrariesForSelfExtract=true \
+              -p:EnableCompressionInSingleFile=true \
+              -o dist/${{ matrix.rid }}
+          # 统一二进制名为 gongwen-paiban(.exe)
+          if [ "${{ matrix.ext }}" = ".exe" ]; then
+              mv -f "dist/${{ matrix.rid }}/MiniMaxAIDocx.Cli${{ matrix.ext }}" "dist/${{ matrix.rid }}/gongwen-paiban${{ matrix.ext }}"
+              cp launcher/format.bat dist/${{ matrix.rid }}/
+              cp launcher/format.ps1 dist/${{ matrix.rid }}/
+          else
+              mv -f "dist/${{ matrix.rid }}/MiniMaxAIDocx.Cli" "dist/${{ matrix.rid }}/gongwen-paiban"
+              chmod +x "dist/${{ matrix.rid }}/gongwen-paiban"
+          fi
+          rm -f dist/${{ matrix.rid }}/*.pdb
+
+      - name: Archive
+        shell: bash
+        run: |
+          cd dist/${{ matrix.rid }}
+          if [ "${{ matrix.ext }}" = ".exe" ]; then
+              7z a ../../gongwen-paiban-${{ matrix.rid }}.zip ./*
+          else
+              tar czf ../../gongwen-paiban-${{ matrix.rid }}.tar.gz ./*
+          fi
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gongwen-paiban-${{ matrix.rid }}
+          path: |
+            gongwen-paiban-${{ matrix.rid }}.*
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: artifacts }
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
