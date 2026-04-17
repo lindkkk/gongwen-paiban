@@ -455,12 +455,13 @@ try {
     $grp2.Font = New-Object System.Drawing.Font("Microsoft YaHei UI", 10)
     $form.Controls.Add($grp2)
 
-    $cbKnow = New-Object System.Windows.Forms.CheckBox
-    $cbKnow.Text = "我知道各级编号的格式，自己指定（不勾选 = 程序自动识别）"
-    $cbKnow.Location = New-Object System.Drawing.Point(15, 28)
-    $cbKnow.Size = New-Object System.Drawing.Size(570, 26)
-    $cbKnow.Font = New-Object System.Drawing.Font("Microsoft YaHei UI", 9)
-    $grp2.Controls.Add($cbKnow)
+    # 提示行（说明留空即自动识别）
+    $lblInstr2 = New-Object System.Windows.Forms.Label
+    $lblInstr2.Text = "如果知道各级标题的编号，填进去会更准；留空则由程序自动识别。"
+    $lblInstr2.Location = New-Object System.Drawing.Point(15, 28)
+    $lblInstr2.Size = New-Object System.Drawing.Size(575, 22)
+    $lblInstr2.Font = New-Object System.Drawing.Font("Microsoft YaHei UI", 9)
+    $grp2.Controls.Add($lblInstr2)
 
     function Make-MarkerRow($grp, $label, $hint, $y) {
         $l = New-Object System.Windows.Forms.Label
@@ -473,7 +474,7 @@ try {
         $tb.Location = New-Object System.Drawing.Point(135, ($y - 2))
         $tb.Size = New-Object System.Drawing.Size(150, 26)
         $tb.Font = New-Object System.Drawing.Font("Microsoft YaHei UI", 9)
-        $tb.Enabled = $false
+        # 默认就启用，不再需要 checkbox 激活——去掉这个开关可避免用户忘勾选
         $grp.Controls.Add($tb)
         $h = New-Object System.Windows.Forms.Label
         $h.Text = $hint
@@ -484,27 +485,17 @@ try {
         $grp.Controls.Add($h)
         return $tb
     }
-    $tbH1 = Make-MarkerRow $grp2 "一级标题:" "例：一、  /  1.  /  第一章" 70
-    $tbH2 = Make-MarkerRow $grp2 "二级标题:" "例：（一）  /  1.1  /  第一节" 105
-    $tbH3 = Make-MarkerRow $grp2 "三级标题:" "例：1.  /  (1)  /  1.1.1" 140
+    $tbH1 = Make-MarkerRow $grp2 "一级标题:" "例：一、  /  1.  /  第一章     留空=自动" 60
+    $tbH2 = Make-MarkerRow $grp2 "二级标题:" "例：（一）  /  1.1  /  第一节     留空=自动" 95
+    $tbH3 = Make-MarkerRow $grp2 "三级标题:" "例：1.  /  (1)  /  1.1.1     留空=自动" 130
 
     $lblTip2 = New-Object System.Windows.Forms.Label
-    $lblTip2.Text = "容错：输入可不带标点，如 `"一`" = `"一、`"；括号中英文可混用"
-    $lblTip2.Location = New-Object System.Drawing.Point(30, 165)
+    $lblTip2.Text = "容错：不带标点也行，如 `"一`" = `"一、`"；括号中英文可混用"
+    $lblTip2.Location = New-Object System.Drawing.Point(30, 162)
     $lblTip2.Size = New-Object System.Drawing.Size(550, 20)
     $lblTip2.Font = New-Object System.Drawing.Font("Microsoft YaHei UI", 8)
     $lblTip2.ForeColor = [System.Drawing.Color]::DimGray
     $grp2.Controls.Add($lblTip2)
-
-    # 复选框改变 → 输入框启用/禁用
-    $tbH1_ref = $tbH1; $tbH2_ref = $tbH2; $tbH3_ref = $tbH3
-    $cbKnow.Add_CheckedChanged({
-        $en = $cbKnow.Checked
-        $tbH1_ref.Enabled = $en
-        $tbH2_ref.Enabled = $en
-        $tbH3_ref.Enabled = $en
-        if (-not $en) { $tbH1_ref.Text=''; $tbH2_ref.Text=''; $tbH3_ref.Text='' }
-    }.GetNewClosure())
 
     # ----- Group 3: 排版样式 -----
     $grp3 = New-Object System.Windows.Forms.GroupBox
@@ -611,13 +602,11 @@ try {
     elseif ($rbOffice.Checked) { $source = 'office' }
     else                       { $source = 'auto' }
 
-    $h1m = ""; $h2m = ""; $h3m = ""
-    if ($cbKnow.Checked) {
-        $h1m = $tbH1.Text.Trim()
-        $h2m = $tbH2.Text.Trim()
-        $h3m = $tbH3.Text.Trim()
-    }
-    Log "source=$source  h1='$h1m' h2='$h2m' h3='$h3m'  customSpecs=$($null -ne $state.customSpecs)"
+    # 去掉 checkbox 开关，直接读三个文本框；空字符串 = 不指定（exe 自动识别）
+    $h1m = $tbH1.Text.Trim()
+    $h2m = $tbH2.Text.Trim()
+    $h3m = $tbH3.Text.Trim()
+    Log "source=$source  h1='$h1m'  h2='$h2m'  h3='$h3m'  customSpecs=$($null -ne $state.customSpecs)"
 
     # ========== 调 exe ==========
     $dir  = [System.IO.Path]::GetDirectoryName($InputDocx)
