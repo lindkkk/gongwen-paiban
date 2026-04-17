@@ -20,10 +20,14 @@ dist/
 test/raw_*.docx
 test/formatted_*.docx
 
-# ====== 用户示例文档 / 草稿（不属于代码） ======
-上海*.doc
+# ====== 用户私有示例文档 / 草稿（不属于代码） ======
 prompt_test.txt
+*_sample.doc
+*_sample.docx
 *_samples.docx
+# 顶层散放的 .doc / .docx（通常是用户自己的稿件，不入库）
+/*.doc
+/*.docx
 
 # ====== OS / 编辑器 ======
 .DS_Store
