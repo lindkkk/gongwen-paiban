@@ -36,10 +36,13 @@ public class GongWenFormatter
     public const int FirstLineChars = 200;
 
     // ====== 样式 ID ======
-    public const string StyleIdTitle = "GongWenTitle";
-    public const string StyleIdHeading1 = "Heading1GongWen";
-    public const string StyleIdHeading2 = "Heading2GongWen";
-    public const string StyleIdHeading3 = "Heading3GongWen";
+    // 标题类直接复用 Word 内置 styleId（Title / Heading1 / Heading2 / Heading3），
+    // 这样 Word / WPS 的导航窗格 / 大纲视图按内置样式识别，不需要再做外部映射。
+    // 原稿若已有同名样式，AddOrReplace 会先删再建，保证格式规范。
+    public const string StyleIdTitle = "Title";
+    public const string StyleIdHeading1 = "Heading1";
+    public const string StyleIdHeading2 = "Heading2";
+    public const string StyleIdHeading3 = "Heading3";
     public const string StyleIdBody = "GongWenBody";
     public const string StyleIdFootnote = "GongWenFootnote";
 
@@ -926,8 +929,7 @@ public class GongWenFormatter
         else
             pPr.AppendChild(new Indentation { FirstLineChars = 0, FirstLine = "0" });
 
-        // 把大纲级别也写进样式定义：即便段落不挂直接属性，只要引用了该样式，
-        // Word / WPS 的导航窗格也能正确显示层级
+        // 大纲级别写进样式定义，让 Word / WPS 导航窗格正确归类
         var outline = OutlineLevelFor(styleId);
         if (outline.HasValue)
             pPr.AppendChild(new OutlineLevel { Val = outline.Value });
@@ -945,8 +947,19 @@ public class GongWenFormatter
         var existing = styles.Elements<Style>().FirstOrDefault(st => st.StyleId?.Value == styleId);
         existing?.Remove();
 
+        // 关键 1：<w:name> 用 Word/WPS 内置约定的英文小写"heading N"，让两者的导航窗格按名字识别
+        // 关键 2：加 <w:qFormat/>，Word "样式库"会把它当"标题"类快速样式；多数 WPS 版本也据此分类
+        string nameForTool = styleId switch
+        {
+            StyleIdHeading1 => "heading 1",
+            StyleIdHeading2 => "heading 2",
+            StyleIdHeading3 => "heading 3",
+            StyleIdTitle    => "Title",
+            _               => displayName
+        };
+
         var style = new Style(
-            new StyleName { Val = displayName },
+            new StyleName { Val = nameForTool },
             new BasedOn { Val = "Normal" },
             pPr,
             rPr
@@ -955,6 +968,20 @@ public class GongWenFormatter
             Type = StyleValues.Paragraph,
             StyleId = styleId
         };
+
+        // 标题类样式加上 qFormat + UIPriority，Word/WPS 识别为"标题"
+        if (outline.HasValue || styleId == StyleIdTitle)
+        {
+            style.AppendChild(new UIPriority { Val = 9 });
+            style.AppendChild(new PrimaryStyle());       // <w:qFormat/>
+        }
+        // 别名保留中文显示名，便于在 Word 样式面板里看到"一级标题 / 二级标题 / 三级标题"
+        if (nameForTool != displayName)
+        {
+            var aliases = new Aliases { Val = displayName };
+            style.InsertAfter(aliases, style.GetFirstChild<StyleName>());
+        }
+
         styles.AppendChild(style);
     }
 

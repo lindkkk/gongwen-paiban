@@ -618,7 +618,16 @@ try {
     if ($state.customSpecs) {
         $cfgPath = Join-Path $env:TEMP "gongwen-paiban-config-$((Get-Date).Ticks).json"
         Write-ConfigJson $state.customSpecs $source $h1m $h2m $h3m $cfgPath
-        Log "wrote custom config: $cfgPath  body.font=$($state.customSpecs.body.font)  body.size_pt=$($state.customSpecs.body.size_pt)"
+        Log "wrote custom config: $cfgPath"
+        # 把用户看到的每级 font/size 也列出来，直接在 log 里就能看出是否符合预期
+        foreach ($rk in @('title','h1','h2','h3','body','footnote')) {
+            $s = $state.customSpecs[$rk]
+            if ($s) { Log ("  " + $rk + "  font=" + $s.font + "  size_pt=" + $s.size_pt + "  bold=" + $s.bold + "  italic=" + $s.italic + "  line=" + $s.line_spacing_mode + ":" + $s.line_spacing_value + "  before=" + $s.spacing_before_pt + "  after=" + $s.spacing_after_pt + "  indent=" + $s.first_line_indent_chars) }
+        }
+        # 再把 JSON 文件内容直接 dump 到 log，用户 one-stop 看到真实传给 exe 的数据
+        Log "--- JSON begin ---"
+        foreach ($ln in (Get-Content -LiteralPath $cfgPath -Encoding UTF8)) { Log ("  " + $ln) }
+        Log "--- JSON end ---"
         $exeArgs += @("--config", $cfgPath)
     }
     if ($h1m) { $exeArgs += @("--h1-marker", $h1m) }

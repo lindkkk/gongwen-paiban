@@ -109,10 +109,10 @@ SPECS = {
 }
 
 STYLEID_TO_ROLE = {
-    'GongWenTitle': 'Title',
-    'Heading1GongWen': 'H1',
-    'Heading2GongWen': 'H2',
-    'Heading3GongWen': 'H3',
+    'Title': 'Title',           # 用 Word 内置 styleId，导航窗格正确识别
+    'Heading1': 'H1',
+    'Heading2': 'H2',
+    'Heading3': 'H3',
     'GongWenBody': 'Body',
     'GongWenFootnote': 'Footnote',
 }
