@@ -1,6 +1,6 @@
 @echo off
 rem =======================================================
-rem  gongwen-paiban drag-drop launcher (v3)
+rem  gongwen-paiban drag-drop launcher (v4 single-form UI)
 rem  Pure ASCII + CRLF. All user-facing Chinese lives in format.ps1.
 rem =======================================================
 
