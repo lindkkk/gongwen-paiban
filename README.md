@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/YOUR/REPO/actions"><img alt="Build" src="https://img.shields.io/badge/build-passing-brightgreen"></a>
+  <a href="https://github.com/lindkkk/gongwen-paiban/actions"><img alt="Build" src="https://img.shields.io/badge/build-passing-brightgreen"></a>
   <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue"></a>
   <a href="https://dotnet.microsoft.com/"><img alt=".NET 8" src="https://img.shields.io/badge/.NET-8.0-512BD4"></a>
   <img alt="Windows/Linux/macOS" src="https://img.shields.io/badge/platform-win--x64%20%7C%20linux--x64%20%7C%20osx--arm64-lightgrey">
@@ -36,7 +36,7 @@
 
 ### 快速上手（Windows 普通用户）
 
-1. 到 [Releases](https://github.com/YOUR/REPO/releases) 下最新 `gongwen-paiban-win-x64.zip`，解压
+1. 到 [Releases](https://github.com/lindkkk/gongwen-paiban/releases) 下最新 `gongwen-paiban-win-x64.zip`，解压
 2. 把待排版的 `.docx` 文件**拖到 `format.bat`** 上
 3. 依次回答三步对话框（文档来源 / 编号方式 / 样式），点"开始排版"
 4. 同目录会生成 `<原文件名>_formatted.docx`
@@ -132,7 +132,7 @@ gongwen-paiban preview 输入.docx
 
 ```bash
 # 需要 .NET 8 SDK（Windows / Linux / macOS 均可）
-git clone https://github.com/YOUR/REPO.git
+git clone https://github.com/lindkkk/gongwen-paiban.git
 cd gongwen-paiban
 
 ./build.sh win-x64      # 输出 dist/win-x64/gongwen-paiban.exe (+ 启动器)
@@ -184,7 +184,7 @@ A **zero-dependency single-file** command-line tool that reformats any `.docx` t
 
 ### Quick Start (Windows end user)
 
-1. Grab the latest `gongwen-paiban-win-x64.zip` from [Releases](https://github.com/YOUR/REPO/releases), extract it
+1. Grab the latest `gongwen-paiban-win-x64.zip` from [Releases](https://github.com/lindkkk/gongwen-paiban/releases), extract it
 2. **Drag** your `.docx` onto **`format.bat`**
 3. Three-step wizard: source tool → numbering → style → Go
 4. A `<name>_formatted.docx` is produced next to the original
@@ -248,7 +248,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
 
 ```bash
 # Needs .NET 8 SDK
-git clone https://github.com/YOUR/REPO.git
+git clone https://github.com/lindkkk/gongwen-paiban.git
 cd gongwen-paiban
 
 ./build.sh win-x64       # → dist/win-x64/gongwen-paiban.exe (+ launchers)
