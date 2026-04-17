@@ -98,13 +98,19 @@ public class GongWenFormatter
         CreateGongWenStyles(mainPart);
 
         var topLevelParas = body.Elements<Paragraph>().ToList();
-        var structure = Analyze(topLevelParas);
 
-        // 按文档顺序跑一遍 numbering 计数器，把每段的自动编号前缀固化成文本
+        // 关键：NumberingResolver 必须在 Analyze 之前跑——
+        // 原稿的"1. 紧张局势..."里"1."是 Word 自动编号动态渲染的，原段文本只有"紧张局势..."。
+        // 用户填 --h2-marker "1" 指望匹配可见的"1.xxx"，必须把渲染前缀先拼进分类器看到的 text。
         var resolver = new NumberingResolver();
         resolver.Load(mainPart.NumberingDefinitionsPart);
-        foreach (var cp in structure.Paragraphs)
-            cp.NumberPrefix = resolver.AdvanceAndFormat(cp.Element);
+        var prefixes = new Dictionary<int, string?>();
+        for (int i = 0; i < topLevelParas.Count; i++)
+        {
+            prefixes[i] = resolver.AdvanceAndFormat(topLevelParas[i]);
+        }
+
+        var structure = Analyze(topLevelParas, prefixes);
 
         ApplyFormatting(structure);
         ApplyFootnoteFormatting(mainPart);
@@ -120,7 +126,7 @@ public class GongWenFormatter
     private Regex? _userH2Regex;
     private Regex? _userH3Regex;
 
-    private DocumentStructure Analyze(List<Paragraph> paragraphs)
+    private DocumentStructure Analyze(List<Paragraph> paragraphs, Dictionary<int, string?> prefixes)
     {
         _userH1Regex = MarkerPatternInferrer.Infer(_options.H1MarkerSample);
         _userH2Regex = MarkerPatternInferrer.Infer(_options.H2MarkerSample);
@@ -132,7 +138,8 @@ public class GongWenFormatter
             {
                 Element = paragraphs[i],
                 Index = i,
-                Text = paragraphs[i].InnerText?.Trim() ?? ""
+                Text = paragraphs[i].InnerText?.Trim() ?? "",
+                NumberPrefix = prefixes.TryGetValue(i, out var pf) ? pf : null
             });
         }
 
@@ -143,24 +150,29 @@ public class GongWenFormatter
             if (r.HasValue) p.Role = r.Value;
         }
 
-        // 1b. 其次看自动编号 numPr 的 ilvl（很多文档用"插入自动编号"而不是 Heading 样式标层级）
+        // 1b. 用户明确指定的 H1/H2/H3 样例 —— 必须在 numPr ilvl 之前，
+        //     因为用户的"1"marker 是对**可见渲染文本**的期待；numbering 段原文本不带前缀，
+        //     需要先把 NumberPrefix 拼进去再用 regex 测。
+        //     顺序：H3 → H2 → H1（最具体的先试，防止 H1 "1." 把 H3 "1.1.1" 错吃）
+        foreach (var p in s.Paragraphs)
+        {
+            if (p.Role != ParaRole.Unclassified) continue;
+            var textForMatch = string.IsNullOrEmpty(p.NumberPrefix)
+                ? p.Text
+                : (p.NumberPrefix + (p.NumberPrefix!.EndsWith(".") || char.IsDigit(p.NumberPrefix[^1]) ? " " : "") + p.Text);
+            if (string.IsNullOrEmpty(textForMatch)) continue;
+            if (_userH3Regex != null && _userH3Regex.IsMatch(textForMatch)) { p.Role = ParaRole.H3; continue; }
+            if (_userH2Regex != null && _userH2Regex.IsMatch(textForMatch)) { p.Role = ParaRole.H2; continue; }
+            if (_userH1Regex != null && _userH1Regex.IsMatch(textForMatch)) { p.Role = ParaRole.H1; continue; }
+        }
+
+        // 1c. 其次才看自动编号 numPr 的 ilvl（fallback，用户没指定 marker 时）
         //     只对明显像标题的段（短 + 加粗）生效，避免把正文里的带编号列表也误当标题
         foreach (var p in s.Paragraphs)
         {
             if (p.Role != ParaRole.Unclassified) continue;
             var r = DetectRoleFromNumPr(p);
             if (r.HasValue) p.Role = r.Value;
-        }
-
-        // 1c. 用户明确指定的 H1/H2/H3 样例 → regex，最强优先级中的"文本前缀"一路
-        //    顺序：H3 → H2 → H1（最具体的先试，防止 H1 "1." 把 H3 "1.1.1" 错吃）
-        foreach (var p in s.Paragraphs)
-        {
-            if (p.Role != ParaRole.Unclassified) continue;
-            if (string.IsNullOrEmpty(p.Text)) continue;
-            if (_userH3Regex != null && _userH3Regex.IsMatch(p.Text)) { p.Role = ParaRole.H3; continue; }
-            if (_userH2Regex != null && _userH2Regex.IsMatch(p.Text)) { p.Role = ParaRole.H2; continue; }
-            if (_userH1Regex != null && _userH1Regex.IsMatch(p.Text)) { p.Role = ParaRole.H1; continue; }
         }
 
         // 2. 目录
