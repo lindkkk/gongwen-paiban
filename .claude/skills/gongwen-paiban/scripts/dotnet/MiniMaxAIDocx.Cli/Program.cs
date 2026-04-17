@@ -31,6 +31,9 @@ try
         case "test-marker":
             TestMarker(args.Skip(1).ToArray());
             break;
+        case "dump-config":
+            DumpDefaultConfig(args.Skip(1).ToArray());
+            break;
         default:
             Console.WriteLine($"Unknown command: {command}");
             return;
@@ -48,6 +51,7 @@ async Task FormatDocument(string[] args)
 {
     string inputPath = "";
     string? outputPath = null;
+    string? configPath = null;
     var options = new FormatOptions();
 
     for (int i = 0; i < args.Length; i++)
@@ -55,11 +59,33 @@ async Task FormatDocument(string[] args)
         string a = args[i];
         string? next() => (i + 1 < args.Length) ? args[++i] : null;
         if (a == "-o" || a == "--output")          { outputPath = next(); }
+        else if (a == "--config")                  { configPath = next(); }
         else if (a == "--source")                  { options.Source = next() ?? "auto"; }
         else if (a == "--h1-marker")               { options.H1MarkerSample = next(); }
         else if (a == "--h2-marker")               { options.H2MarkerSample = next(); }
         else if (a == "--h3-marker")               { options.H3MarkerSample = next(); }
         else if (!a.StartsWith("-"))               { inputPath = a; }
+    }
+
+    // --config 先加载，再被其它 CLI 参数覆盖（markers / source 命令行优先级高于 JSON）
+    if (!string.IsNullOrEmpty(configPath))
+    {
+        if (!File.Exists(configPath))
+        {
+            Console.WriteLine($"Error: config file not found: {configPath}");
+            Environment.Exit(1);
+            return;
+        }
+        var loaded = FormatOptions.FromJsonFile(configPath);
+        loaded.H1MarkerSample ??= options.H1MarkerSample;
+        loaded.H2MarkerSample ??= options.H2MarkerSample;
+        loaded.H3MarkerSample ??= options.H3MarkerSample;
+        if (options.H1MarkerSample != null) loaded.H1MarkerSample = options.H1MarkerSample;
+        if (options.H2MarkerSample != null) loaded.H2MarkerSample = options.H2MarkerSample;
+        if (options.H3MarkerSample != null) loaded.H3MarkerSample = options.H3MarkerSample;
+        if (options.Source != "auto") loaded.Source = options.Source;
+        options = loaded;
+        Console.WriteLine($"Config loaded: {configPath}");
     }
 
     if (string.IsNullOrEmpty(inputPath))
@@ -130,6 +156,21 @@ async Task ConvertDocument(string[] args)
     Console.WriteLine("Please save your document as .docx format before using the format command.");
 
     await Task.CompletedTask;
+}
+
+void DumpDefaultConfig(string[] args)
+{
+    var opts = new FormatOptions();
+    var json = opts.ToJson();
+    if (args.Length == 0)
+    {
+        Console.WriteLine(json);
+    }
+    else
+    {
+        File.WriteAllText(args[0], json);
+        Console.WriteLine($"Default config written to: {args[0]}");
+    }
 }
 
 void TestMarker(string[] args)

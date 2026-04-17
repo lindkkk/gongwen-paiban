@@ -1,7 +1,7 @@
 @echo off
 rem =======================================================
-rem  gongwen-paiban drag-drop launcher
-rem  ASCII-only; UTF-8 handling delegated to format.ps1
+rem  gongwen-paiban drag-drop launcher (v3)
+rem  Pure ASCII + CRLF. All user-facing Chinese lives in format.ps1.
 rem =======================================================
 
 setlocal EnableExtensions
@@ -10,13 +10,8 @@ set "LOG=%~dp0paiban-log.txt"
 set "PS1=%~dp0format.ps1"
 set "EXE=%~dp0gongwen-paiban.exe"
 
-rem Switch console codepage to UTF-8 so any variable expansion
-rem containing non-ASCII (e.g. Chinese folder names) is written
-rem to the log as UTF-8, matching what PowerShell emits later.
 chcp 65001 >nul 2>&1
 
-rem Start the log. Each redirect opens & closes the file, so the
-rem log file is NOT held open across the powershell invocation.
 > "%LOG%" echo ===== gongwen-paiban run %DATE% %TIME% =====
 >>"%LOG%" echo BAT path : %~dpnx0
 >>"%LOG%" echo PS1 path : %PS1%
@@ -33,25 +28,21 @@ echo.
 
 if "%~1"=="" (
     echo ERROR: No file was dropped onto this bat.
-    echo        Please drag a .docx file onto format.bat.
     >>"%LOG%" echo ERROR: no argument
     goto :pause_and_exit
 )
-
 if not exist "%EXE%" (
     echo ERROR: gongwen-paiban.exe not found at:
     echo   %EXE%
     >>"%LOG%" echo ERROR: exe missing
     goto :pause_and_exit
 )
-
 if not exist "%PS1%" (
     echo ERROR: format.ps1 not found at:
     echo   %PS1%
     >>"%LOG%" echo ERROR: ps1 missing
     goto :pause_and_exit
 )
-
 if not exist "%~1" (
     echo ERROR: input file does not exist:
     echo   %~1
@@ -60,12 +51,8 @@ if not exist "%~1" (
 )
 
 echo Running PowerShell interactive launcher...
-echo   (if no dialog shows up in 10 seconds, see log for details)
 echo.
 
-rem No redirection: let ps1 own the log file itself. This avoids
-rem Windows exclusive write locks that previously made ps1's own
-rem log writes fail silently.
 powershell -NoProfile -ExecutionPolicy Bypass -File "%PS1%" -InputDocx "%~1"
 set "RC=%ERRORLEVEL%"
 >>"%LOG%" echo bat saw exit code: %RC%

@@ -444,60 +444,45 @@ public class GongWenFormatter
         }
     }
 
-    private void ApplyTitleStyle(ClassifiedPara cp)
+    private void ApplySpecToParagraph(ClassifiedPara cp, string styleId, StyleSpec spec)
     {
-        RebuildPPr(cp.Element, StyleIdTitle,
-            justify: JustificationValues.Center,
-            spacingBefore: null, spacingAfter: null,
-            line: LineSpacingTitle, lineRule: LineSpacingRuleValues.Exact,
-            firstLineChars: null, firstLine: null);
-        RebuildRPr(cp.Element, FontTitle, FontSizeErhao, bold: false);
+        var (line, lineRule) = spec.GetLineSpec();
+        RebuildPPr(cp.Element, styleId,
+            justify: ParseJustification(spec.Alignment),
+            spacingBefore: spec.SpacingBeforePt > 0 ? spec.SpacingBeforeTwips : null,
+            spacingAfter:  spec.SpacingAfterPt  > 0 ? spec.SpacingAfterTwips  : null,
+            line: line, lineRule: ParseLineRule(lineRule),
+            firstLineChars: spec.FirstLineIndentChars > 0 ? spec.FirstLineCharsValue : 0,
+            firstLine: spec.FirstLineIndentChars > 0 ? null : "0");
+        RebuildRPr(cp.Element, spec.Font, spec.SzHalfPoints, bold: spec.Bold, italic: spec.Italic);
         InlineNumberPrefix(cp);
     }
 
-    private void ApplyHeading1Style(ClassifiedPara cp)
+    private void ApplyTitleStyle(ClassifiedPara cp)    => ApplySpecToParagraph(cp, StyleIdTitle,    _options.Title);
+    private void ApplyHeading1Style(ClassifiedPara cp) => ApplySpecToParagraph(cp, StyleIdHeading1, _options.H1);
+    private void ApplyHeading2Style(ClassifiedPara cp) => ApplySpecToParagraph(cp, StyleIdHeading2, _options.H2);
+    private void ApplyHeading3Style(ClassifiedPara cp) => ApplySpecToParagraph(cp, StyleIdHeading3, _options.H3);
+    private void ApplyBodyTextStyle(ClassifiedPara cp) => ApplySpecToParagraph(cp, StyleIdBody,     _options.Body);
+
+    private static JustificationValues? ParseJustification(string? a)
     {
-        RebuildPPr(cp.Element, StyleIdHeading1,
-            justify: null,
-            spacingBefore: SpacingBeforeAfter, spacingAfter: SpacingBeforeAfter,
-            line: LineSpacing15, lineRule: LineSpacingRuleValues.Auto,
-            firstLineChars: FirstLineChars, firstLine: null);
-        RebuildRPr(cp.Element, FontH1, FontSizeSanhao, bold: false);
-        InlineNumberPrefix(cp);
+        if (string.IsNullOrEmpty(a)) return null;
+        return a.ToLowerInvariant() switch
+        {
+            "left" or "start" => JustificationValues.Left,
+            "center" => JustificationValues.Center,
+            "right" or "end" => JustificationValues.Right,
+            "justify" or "both" => JustificationValues.Both,
+            _ => null,
+        };
     }
 
-    private void ApplyHeading2Style(ClassifiedPara cp)
+    private static LineSpacingRuleValues ParseLineRule(string r) => r switch
     {
-        RebuildPPr(cp.Element, StyleIdHeading2,
-            justify: null,
-            spacingBefore: null, spacingAfter: null,
-            line: LineSpacing15, lineRule: LineSpacingRuleValues.Auto,
-            firstLineChars: FirstLineChars, firstLine: null);
-        RebuildRPr(cp.Element, FontH2, FontSizeSanhao, bold: true);
-        InlineNumberPrefix(cp);
-    }
-
-    private void ApplyHeading3Style(ClassifiedPara cp)
-    {
-        RebuildPPr(cp.Element, StyleIdHeading3,
-            justify: null,
-            spacingBefore: null, spacingAfter: null,
-            line: LineSpacing15, lineRule: LineSpacingRuleValues.Auto,
-            firstLineChars: FirstLineChars, firstLine: null);
-        RebuildRPr(cp.Element, FontH3, FontSizeSanhao, bold: true);
-        InlineNumberPrefix(cp);
-    }
-
-    private void ApplyBodyTextStyle(ClassifiedPara cp)
-    {
-        RebuildPPr(cp.Element, StyleIdBody,
-            justify: null,
-            spacingBefore: null, spacingAfter: null,
-            line: LineSpacing15, lineRule: LineSpacingRuleValues.Auto,
-            firstLineChars: FirstLineChars, firstLine: null);
-        RebuildRPr(cp.Element, FontBody, FontSizeSanhao, bold: false);
-        InlineNumberPrefix(cp);
-    }
+        "exact" => LineSpacingRuleValues.Exact,
+        "atLeast" => LineSpacingRuleValues.AtLeast,
+        _ => LineSpacingRuleValues.Auto,
+    };
 
     /// <summary>
     /// 如果原稿该段挂了 numPr 自动编号，我们在 RebuildPPr 里删掉了 numPr，
@@ -545,17 +530,21 @@ public class GongWenFormatter
     {
         var footnotesPart = mainPart.FootnotesPart;
         if (footnotesPart?.Footnotes == null) return;
+        var spec = _options.Footnote;
+        var (line, lineRule) = spec.GetLineSpec();
 
         foreach (var footnote in footnotesPart.Footnotes.Elements<Footnote>())
         {
             foreach (var para in footnote.Elements<Paragraph>())
             {
                 RebuildPPr(para, StyleIdFootnote,
-                    justify: null,
-                    spacingBefore: null, spacingAfter: null,
-                    line: LineSpacingSingle, lineRule: LineSpacingRuleValues.Auto,
-                    firstLineChars: 0, firstLine: "0");
-                RebuildRPr(para, FontFootnote, FontSizeSihao, bold: false);
+                    justify: ParseJustification(spec.Alignment),
+                    spacingBefore: spec.SpacingBeforePt > 0 ? spec.SpacingBeforeTwips : null,
+                    spacingAfter:  spec.SpacingAfterPt  > 0 ? spec.SpacingAfterTwips  : null,
+                    line: line, lineRule: ParseLineRule(lineRule),
+                    firstLineChars: spec.FirstLineIndentChars > 0 ? spec.FirstLineCharsValue : 0,
+                    firstLine: spec.FirstLineIndentChars > 0 ? null : "0");
+                RebuildRPr(para, spec.Font, spec.SzHalfPoints, bold: spec.Bold, italic: spec.Italic);
             }
         }
     }
@@ -774,7 +763,7 @@ public class GongWenFormatter
     /// 重建 rPr：整个 RunProperties 丢掉（含 *Theme 主题字体属性、颜色、高亮、字符样式、kern、bdr、lang 等），
     /// 按 schema 顺序重建一份仅包含字体/粗体/字号的干净 rPr，并带 w:hint="eastAsia" 方便 Word 按 CJK 路径匹配。
     /// </summary>
-    private void RebuildRPr(Paragraph para, string fontName, string fontSize, bool bold)
+    private void RebuildRPr(Paragraph para, string fontName, string fontSize, bool bold, bool italic = false)
     {
         foreach (var run in para.Elements<Run>())
         {
@@ -803,6 +792,18 @@ public class GongWenFormatter
             {
                 rPr.AppendChild(new Bold { Val = false });
                 rPr.AppendChild(new BoldComplexScript { Val = false });
+            }
+
+            // Italic（schema 顺序：i/iCs 在 b/bCs 之后）
+            if (italic)
+            {
+                rPr.AppendChild(new Italic());
+                rPr.AppendChild(new ItalicComplexScript());
+            }
+            else
+            {
+                rPr.AppendChild(new Italic { Val = false });
+                rPr.AppendChild(new ItalicComplexScript { Val = false });
             }
 
             rPr.AppendChild(new FontSize { Val = fontSize });
@@ -874,91 +875,58 @@ public class GongWenFormatter
         }
         var styles = stylesPart.Styles ??= new Styles();
 
-        AddOrReplaceStyle(styles, StyleIdTitle, "公文标题",
-            pPrBuilder: () => new StyleParagraphProperties(
-                new Justification { Val = JustificationValues.Center },
-                new SpacingBetweenLines { Line = LineSpacingTitle, LineRule = LineSpacingRuleValues.Exact }
-            ),
-            rPrBuilder: () => new StyleRunProperties(
-                new RunFonts { EastAsia = FontTitle, Ascii = FontTitle, HighAnsi = FontTitle, ComplexScript = FontTitle, Hint = FontTypeHintValues.EastAsia },
-                new FontSize { Val = FontSizeErhao },
-                new FontSizeComplexScript { Val = FontSizeErhao },
-                new Bold { Val = false },
-                new BoldComplexScript { Val = false }
-            ));
-
-        AddOrReplaceStyle(styles, StyleIdHeading1, "一级标题",
-            pPrBuilder: () => new StyleParagraphProperties(
-                new SpacingBetweenLines
-                {
-                    Before = SpacingBeforeAfter,
-                    After = SpacingBeforeAfter,
-                    Line = LineSpacing15,
-                    LineRule = LineSpacingRuleValues.Auto
-                },
-                new Indentation { FirstLineChars = FirstLineChars }
-            ),
-            rPrBuilder: () => new StyleRunProperties(
-                new RunFonts { EastAsia = FontH1, Ascii = FontH1, HighAnsi = FontH1, ComplexScript = FontH1, Hint = FontTypeHintValues.EastAsia },
-                new FontSize { Val = FontSizeSanhao },
-                new FontSizeComplexScript { Val = FontSizeSanhao },
-                new Bold { Val = false },
-                new BoldComplexScript { Val = false }
-            ));
-
-        AddOrReplaceStyle(styles, StyleIdHeading2, "二级标题",
-            pPrBuilder: () => new StyleParagraphProperties(
-                new SpacingBetweenLines { Line = LineSpacing15, LineRule = LineSpacingRuleValues.Auto },
-                new Indentation { FirstLineChars = FirstLineChars }
-            ),
-            rPrBuilder: () => new StyleRunProperties(
-                new RunFonts { EastAsia = FontH2, Ascii = FontH2, HighAnsi = FontH2, ComplexScript = FontH2, Hint = FontTypeHintValues.EastAsia },
-                new FontSize { Val = FontSizeSanhao },
-                new FontSizeComplexScript { Val = FontSizeSanhao },
-                new Bold(),
-                new BoldComplexScript()
-            ));
-
-        AddOrReplaceStyle(styles, StyleIdHeading3, "三级标题",
-            pPrBuilder: () => new StyleParagraphProperties(
-                new SpacingBetweenLines { Line = LineSpacing15, LineRule = LineSpacingRuleValues.Auto },
-                new Indentation { FirstLineChars = FirstLineChars }
-            ),
-            rPrBuilder: () => new StyleRunProperties(
-                new RunFonts { EastAsia = FontH3, Ascii = FontH3, HighAnsi = FontH3, ComplexScript = FontH3, Hint = FontTypeHintValues.EastAsia },
-                new FontSize { Val = FontSizeSanhao },
-                new FontSizeComplexScript { Val = FontSizeSanhao },
-                new Bold(),
-                new BoldComplexScript()
-            ));
-
-        AddOrReplaceStyle(styles, StyleIdBody, "公文正文",
-            pPrBuilder: () => new StyleParagraphProperties(
-                new SpacingBetweenLines { Line = LineSpacing15, LineRule = LineSpacingRuleValues.Auto },
-                new Indentation { FirstLineChars = FirstLineChars }
-            ),
-            rPrBuilder: () => new StyleRunProperties(
-                new RunFonts { EastAsia = FontBody, Ascii = FontBody, HighAnsi = FontBody, ComplexScript = FontBody, Hint = FontTypeHintValues.EastAsia },
-                new FontSize { Val = FontSizeSanhao },
-                new FontSizeComplexScript { Val = FontSizeSanhao },
-                new Bold { Val = false },
-                new BoldComplexScript { Val = false }
-            ));
-
-        AddOrReplaceStyle(styles, StyleIdFootnote, "公文脚注",
-            pPrBuilder: () => new StyleParagraphProperties(
-                new SpacingBetweenLines { Line = LineSpacingSingle, LineRule = LineSpacingRuleValues.Auto },
-                new Indentation { FirstLineChars = 0, FirstLine = "0" }
-            ),
-            rPrBuilder: () => new StyleRunProperties(
-                new RunFonts { EastAsia = FontFootnote, Ascii = FontFootnote, HighAnsi = FontFootnote, ComplexScript = FontFootnote, Hint = FontTypeHintValues.EastAsia },
-                new FontSize { Val = FontSizeSihao },
-                new FontSizeComplexScript { Val = FontSizeSihao },
-                new Bold { Val = false },
-                new BoldComplexScript { Val = false }
-            ));
+        RegisterStyleFromSpec(styles, StyleIdTitle,    "公文标题", _options.Title);
+        RegisterStyleFromSpec(styles, StyleIdHeading1, "一级标题", _options.H1);
+        RegisterStyleFromSpec(styles, StyleIdHeading2, "二级标题", _options.H2);
+        RegisterStyleFromSpec(styles, StyleIdHeading3, "三级标题", _options.H3);
+        RegisterStyleFromSpec(styles, StyleIdBody,     "公文正文", _options.Body);
+        RegisterStyleFromSpec(styles, StyleIdFootnote, "公文脚注", _options.Footnote);
 
         stylesPart.Styles.Save();
+    }
+
+    /// <summary>按 StyleSpec 生成一个 Word 样式定义，插入到 styles.xml。</summary>
+    private void RegisterStyleFromSpec(Styles styles, string styleId, string displayName, StyleSpec spec)
+    {
+        var (line, lineRule) = spec.GetLineSpec();
+        var pPr = new StyleParagraphProperties();
+        var jc = ParseJustification(spec.Alignment);
+        if (jc.HasValue) pPr.AppendChild(new Justification { Val = jc.Value });
+
+        var spacing = new SpacingBetweenLines { Line = line, LineRule = ParseLineRule(lineRule) };
+        if (spec.SpacingBeforePt > 0) spacing.Before = spec.SpacingBeforeTwips;
+        if (spec.SpacingAfterPt  > 0) spacing.After  = spec.SpacingAfterTwips;
+        pPr.AppendChild(spacing);
+
+        if (spec.FirstLineIndentChars > 0)
+            pPr.AppendChild(new Indentation { FirstLineChars = spec.FirstLineCharsValue });
+        else
+            pPr.AppendChild(new Indentation { FirstLineChars = 0, FirstLine = "0" });
+
+        var rPr = new StyleRunProperties(
+            new RunFonts { Ascii = spec.Font, HighAnsi = spec.Font, EastAsia = spec.Font, ComplexScript = spec.Font, Hint = FontTypeHintValues.EastAsia },
+            new FontSize { Val = spec.SzHalfPoints },
+            new FontSizeComplexScript { Val = spec.SzHalfPoints }
+        );
+        if (spec.Bold)   { rPr.AppendChild(new Bold());   rPr.AppendChild(new BoldComplexScript()); }
+        else             { rPr.AppendChild(new Bold { Val = false });   rPr.AppendChild(new BoldComplexScript { Val = false }); }
+        if (spec.Italic) { rPr.AppendChild(new Italic()); rPr.AppendChild(new ItalicComplexScript()); }
+        else             { rPr.AppendChild(new Italic { Val = false }); rPr.AppendChild(new ItalicComplexScript { Val = false }); }
+
+        var existing = styles.Elements<Style>().FirstOrDefault(st => st.StyleId?.Value == styleId);
+        existing?.Remove();
+
+        var style = new Style(
+            new StyleName { Val = displayName },
+            new BasedOn { Val = "Normal" },
+            pPr,
+            rPr
+        )
+        {
+            Type = StyleValues.Paragraph,
+            StyleId = styleId
+        };
+        styles.AppendChild(style);
     }
 
     private void AddOrReplaceStyle(Styles styles, string styleId, string displayName,
