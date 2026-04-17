@@ -240,27 +240,29 @@ function Show-StyleEditor {
             else { $lblLineUnit_ref.Text = "倍（1.0=单倍）" }
         }.GetNewClosure())
 
-        Add-Label2 $panel "段前:" 20 182
+        # 段前 / 段后：之前段后 label(x=250,w=80) 和 NUD(x=310) 重叠 20px，label 盖在 NUD 上
+        # 使点击无效。缩窄 label + 重排坐标：段前 20-195，gap，段后 230-405。
+        Add-Label2 $panel "段前:" 20 182 60
         $nudBefore = New-Object System.Windows.Forms.NumericUpDown
-        $nudBefore.Location = New-Object System.Drawing.Point(110, 180)
-        $nudBefore.Size = New-Object System.Drawing.Size(80, 26)
+        $nudBefore.Location = New-Object System.Drawing.Point(85, 180)
+        $nudBefore.Size = New-Object System.Drawing.Size(75, 26)
         $nudBefore.Font = New-Object System.Drawing.Font("Microsoft YaHei UI", 9)
         $nudBefore.DecimalPlaces = 1
         $nudBefore.Minimum = 0; $nudBefore.Maximum = 144; $nudBefore.Increment = 0.5
         $nudBefore.Value = [decimal]$sp.spacing_before_pt
         $panel.Controls.Add($nudBefore)
-        Add-Label2 $panel "磅" 195 182 30
+        Add-Label2 $panel "磅" 165 182 25
 
-        Add-Label2 $panel "段后:" 250 182
+        Add-Label2 $panel "段后:" 230 182 60
         $nudAfter = New-Object System.Windows.Forms.NumericUpDown
-        $nudAfter.Location = New-Object System.Drawing.Point(310, 180)
-        $nudAfter.Size = New-Object System.Drawing.Size(80, 26)
+        $nudAfter.Location = New-Object System.Drawing.Point(295, 180)
+        $nudAfter.Size = New-Object System.Drawing.Size(75, 26)
         $nudAfter.Font = New-Object System.Drawing.Font("Microsoft YaHei UI", 9)
         $nudAfter.DecimalPlaces = 1
         $nudAfter.Minimum = 0; $nudAfter.Maximum = 144; $nudAfter.Increment = 0.5
         $nudAfter.Value = [decimal]$sp.spacing_after_pt
         $panel.Controls.Add($nudAfter)
-        Add-Label2 $panel "磅" 395 182 30
+        Add-Label2 $panel "磅" 375 182 25
 
         Add-Label2 $panel "首行缩进:" 20 215 90
         $nudIndent = New-Object System.Windows.Forms.NumericUpDown
@@ -543,20 +545,24 @@ try {
     $lblTip3.ForeColor = [System.Drawing.Color]::DimGray
     $grp3.Controls.Add($lblTip3)
 
-    # 样式编辑器状态
-    $script:customSpecs = $null
+    # 样式编辑器状态：关键修复——
+    # 用共享 hashtable 而不是 $script:customSpecs。PowerShell 的 .GetNewClosure()
+    # 会把 $script: 作用域重绑到闭包内部快照，赋值不会穿出闭包；而对 hashtable 的
+    # 键赋值（$state.customSpecs = $r）只是在共享引用上改值，外层能正确读到。
+    $state = @{ customSpecs = $null }
 
     $cbCustom_ref = $cbCustom
     $btnEditor_ref = $btnEditor
     $lblEditorStatus_ref = $lblEditorStatus
+    $state_ref = $state
     $cbCustom.Add_CheckedChanged({
         $btnEditor_ref.Enabled = $cbCustom_ref.Checked
         if (-not $cbCustom_ref.Checked) {
-            $script:customSpecs = $null
+            $state_ref.customSpecs = $null
             $lblEditorStatus_ref.Text = "（未自定义，使用公文默认）"
             $lblEditorStatus_ref.ForeColor = [System.Drawing.Color]::DimGray
         } else {
-            if ($null -eq $script:customSpecs) {
+            if ($null -eq $state_ref.customSpecs) {
                 $lblEditorStatus_ref.Text = "（请点左侧按钮打开编辑器设置参数）"
                 $lblEditorStatus_ref.ForeColor = [System.Drawing.Color]::OrangeRed
             }
@@ -565,14 +571,14 @@ try {
 
     $mainForm_ref = $form
     $btnEditor.Add_Click({
-        $init = if ($script:customSpecs) { $script:customSpecs } else { Get-AllDefaultSpecs }
-        # 关键：把主窗口作为 Owner 传进去，模态对话框才能正确与父建立 Z-order
+        $init = if ($state_ref.customSpecs) { $state_ref.customSpecs } else { Get-AllDefaultSpecs }
+        # 把主窗口作为 Owner 传进去，模态对话框才能正确与父建立 Z-order
         $r = Show-StyleEditor -initSpecs $init -Owner $mainForm_ref
         if ($null -ne $r) {
-            $script:customSpecs = $r
+            $state_ref.customSpecs = $r
             $lblEditorStatus_ref.Text = "√ 已保存自定义样式"
             $lblEditorStatus_ref.ForeColor = [System.Drawing.Color]::Green
-            Log "style editor returned custom specs"
+            Log "style editor returned custom specs  (body.font=$($r.body.font)  body.size_pt=$($r.body.size_pt))"
         }
     }.GetNewClosure())
 
@@ -611,7 +617,7 @@ try {
         $h2m = $tbH2.Text.Trim()
         $h3m = $tbH3.Text.Trim()
     }
-    Log "source=$source  h1='$h1m' h2='$h2m' h3='$h3m'  customSpecs=$($null -ne $script:customSpecs)"
+    Log "source=$source  h1='$h1m' h2='$h2m' h3='$h3m'  customSpecs=$($null -ne $state.customSpecs)"
 
     # ========== 调 exe ==========
     $dir  = [System.IO.Path]::GetDirectoryName($InputDocx)
@@ -620,10 +626,10 @@ try {
 
     $exeArgs = @("format", $InputDocx, "-o", $out, "--source", $source)
 
-    if ($script:customSpecs) {
+    if ($state.customSpecs) {
         $cfgPath = Join-Path $env:TEMP "gongwen-paiban-config-$((Get-Date).Ticks).json"
-        Write-ConfigJson $script:customSpecs $source $h1m $h2m $h3m $cfgPath
-        Log "wrote custom config: $cfgPath"
+        Write-ConfigJson $state.customSpecs $source $h1m $h2m $h3m $cfgPath
+        Log "wrote custom config: $cfgPath  body.font=$($state.customSpecs.body.font)  body.size_pt=$($state.customSpecs.body.size_pt)"
         $exeArgs += @("--config", $cfgPath)
     }
     if ($h1m) { $exeArgs += @("--h1-marker", $h1m) }
