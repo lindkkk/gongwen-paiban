@@ -1,0 +1,4 @@
+<Workspace>
+  <Project Path="MiniMaxAIDocx.Core/MiniMaxAIDocx.Core.csproj" Type="Classic" />
+  <Project Path="MiniMaxAIDocx.Cli/MiniMaxAIDocx.Cli.csproj" Type="Console" />
+</Workspace>
